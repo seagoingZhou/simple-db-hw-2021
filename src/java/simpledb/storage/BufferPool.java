@@ -104,7 +104,7 @@ public class BufferPool {
         if (getPages().containsKey(pid)) {
             return getPages().get(pid);
         }
-        
+
         if (isFull()) {
             throw new DbException("");
         }
