@@ -1,16 +1,11 @@
 package simpledb.common;
 
-import simpledb.common.Type;
 import simpledb.storage.DbFile;
 import simpledb.storage.HeapFile;
 import simpledb.storage.TupleDesc;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The Catalog keeps track of all available tables in the database and their
@@ -23,12 +18,65 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
 
+    public static class Table implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        private DbFile dbFile;
+        private String name;
+        private String primaryKey;
+
+        public Table(DbFile dbFile, String name, String primaryKey) {
+            this.dbFile = dbFile;
+            this.name = name;
+            this.primaryKey = primaryKey;
+        }
+
+        public DbFile getDbFile() {
+            return dbFile;
+        }
+
+        public void setDbFile(DbFile dbFile) {
+            this.dbFile = dbFile;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getPrimaryKey() {
+            return primaryKey;
+        }
+
+        public void setPrimaryKey(String primaryKey) {
+            this.primaryKey = primaryKey;
+        }
+    }
+
+    private Map<Integer, Table> tables;
+    private Map<String, Integer> name2Id;
+
+    private Map<Integer, Table> getTables() {
+        return tables;
+    }
+
+    private Map<String, Integer> getName2Id() {
+        return name2Id;
+    }
+
+
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
         // some code goes here
+        tables = new HashMap<>();
+        name2Id = new HashMap<>();
     }
 
     /**
@@ -42,6 +90,17 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        assert name != null;
+        Table table = new Table(file, name, pkeyField);
+        int tableId = file.getId();
+        if (getName2Id().containsKey(name)) {
+            int oldTableId = getName2Id().get(name);
+            getName2Id().remove(name);
+            getTables().remove(oldTableId);
+        }
+
+        getName2Id().put(name, tableId);
+        getTables().put(tableId, table);
     }
 
     public void addTable(DbFile file, String name) {
@@ -65,7 +124,10 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if (getName2Id().containsKey(name)) {
+            return getName2Id().get(name);
+        }
+        throw new NoSuchElementException();
     }
 
     /**
@@ -76,7 +138,10 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if (getTables().containsKey(tableid)) {
+            return getDatabaseFile(tableid).getTupleDesc();
+        }
+        throw new NoSuchElementException();
     }
 
     /**
@@ -87,27 +152,38 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if (getTables().containsKey(tableid)) {
+            return getTables().get(tableid).getDbFile();
+        }
+        throw new NoSuchElementException();
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        if (getTables().containsKey(tableid)) {
+            return getTables().get(tableid).getPrimaryKey();
+        }
+        throw new NoSuchElementException();
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return getTables().keySet().iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        if (getTables().containsKey(id)) {
+            return getTables().get(id).getName();
+        }
+        throw new NoSuchElementException();
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        this.tables.clear();
+        this.name2Id.clear();
     }
     
     /**
