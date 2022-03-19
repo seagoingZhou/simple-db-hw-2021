@@ -38,6 +38,9 @@ public class TupleTest extends SimpleDbTestBase {
         TupleDesc td = Utility.getTupleDesc(5);
         Tuple tup = new Tuple(td);
         assertEquals(td, tup.getTupleDesc());
+        td = Utility.getTupleDesc(7);
+        tup.resetTupleDesc(td);
+        assertEquals(td, tup.getTupleDesc());
     }
 
     /**
