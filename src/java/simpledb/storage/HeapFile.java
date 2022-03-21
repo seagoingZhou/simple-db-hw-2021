@@ -59,7 +59,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return getFile().getAbsoluteFile().hashCode();
     }
 
     /**
@@ -121,10 +121,99 @@ public class HeapFile implements DbFile {
         // not necessary for lab1
     }
 
+    protected class HeapFileIterator implements DbFileIterator {
+
+        private final TransactionId transactionId;
+        private Iterator<Tuple> tupleIter;
+        private int pageCursor;
+
+        public HeapFileIterator(TransactionId transactionId) {
+            this.transactionId = transactionId;
+            this.tupleIter = null;
+            this.pageCursor = -1;
+        }
+
+        @Override
+        public void open() throws DbException, TransactionAbortedException {
+            initPageCursor();
+            setCurPageIterator(getPageCursor());
+        }
+
+        @Override
+        public boolean hasNext() throws DbException, TransactionAbortedException {
+            if (!isOpen()) {
+                return false;
+            }
+            while (getPageCursor() < numPages() - 1) {
+                if (getTupleIter().hasNext()) {
+                    return true;
+                } else {
+                    setCurPageIterator(incPageCursor());
+                }
+            }
+            return getTupleIter().hasNext();
+        }
+
+        @Override
+        public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+            if (hasNext()) {
+                return getTupleIter().next();
+            }
+            throw new NoSuchElementException();
+        }
+
+        @Override
+        public void rewind() throws DbException, TransactionAbortedException {
+            close();
+            open();
+        }
+
+        @Override
+        public void close() {
+            this.pageCursor = -1;
+            setTupleIter(null);
+        }
+
+        private void setCurPageIterator(int curPageNumber) throws DbException, TransactionAbortedException {
+            if (curPageNumber > numPages()) {
+                throw new DbException("");
+            }
+            HeapPageId pageId = new HeapPageId(getId(), curPageNumber);
+            HeapPage page = (HeapPage) Database.getBufferPool()
+                    .getPage(this.transactionId, pageId, Permissions.READ_ONLY);
+            setTupleIter(page.iterator()) ;
+        }
+
+        private Iterator<Tuple> getTupleIter() {
+            return this.tupleIter;
+        }
+
+        private void setTupleIter(Iterator<Tuple> tupleIter) {
+            this.tupleIter = tupleIter;
+        }
+
+        private int getPageCursor() {
+            return this.pageCursor;
+        }
+
+        private void initPageCursor() {
+            this.pageCursor = 0;
+        }
+
+        private int incPageCursor() {
+            return ++this.pageCursor;
+        }
+
+        private boolean isOpen() {
+            return this.pageCursor > -1;
+        }
+    }
+
+
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-        return null;
+        return new HeapFileIterator(tid);
     }
 
 }
